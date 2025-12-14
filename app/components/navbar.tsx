@@ -1,7 +1,8 @@
 "use client";
 
-import { ReactNode, useState } from "react";
+import { ReactNode, useMemo, useState } from "react";
 import Button from "./button";
+import { useAuth } from "../lib/auth-context";
 
 const navItems = [
     {
@@ -80,9 +81,15 @@ const navItems = [
 
 export default function Navbar({ children }: { children: ReactNode }) {
     const [isSidebarOpen, setSidebarOpen] = useState(false);
+    const { user, loading } = useAuth();
 
     const toggleSidebar = () => setSidebarOpen((prev) => !prev);
     const closeSidebar = () => setSidebarOpen(false);
+    const authLabel = useMemo(() => {
+        if (loading) return "Sprawdzanie sesji...";
+        if (user?.email) return `Zalogowany jako ${user.email}`;
+        return "Nie jesteś zalogowany";
+    }, [loading, user]);
 
     return (
         <div className="min-h-screen bg-gray-50 text-gray-900 flex">
@@ -134,19 +141,31 @@ export default function Navbar({ children }: { children: ReactNode }) {
                             <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
                         </svg>
                     </button>
-                    <div>
-                        <p className="hidden md:visible text-lg font-semibold text-gray-800">
-                            Witaj
+                    <div className="flex flex-col">
+                        <p className="text-xs uppercase tracking-wide text-gray-400">Stan konta</p>
+                        <p className="text-sm font-medium text-gray-800">
+                            {authLabel}
                         </p>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <Button variant="link" href="/user/register">
-                            Rejestracja
-                        </Button>
-                        <Button variant="link" href="/user/signin">
-                            Logowanie
-                        </Button>
-                    </div>
+                    {user ? (
+                        <div className="flex items-center gap-2">
+                            <Button variant="link" href="/user/profile">
+                                Profil
+                            </Button>
+                            <Button variant="link" href="/user/signout">
+                                Wyloguj
+                            </Button>
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-2">
+                            <Button variant="link" href="/user/register">
+                                Rejestracja
+                            </Button>
+                            <Button variant="link" href="/user/signin">
+                                Logowanie
+                            </Button>
+                        </div>
+                    )}
                 </header>
                 <main className="flex-1 p-6">{children}</main>
             </div>
