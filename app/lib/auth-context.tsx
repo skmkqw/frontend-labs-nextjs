@@ -1,3 +1,5 @@
+"use client";
+
 import { onAuthStateChanged, User } from "firebase/auth";
 import React, { createContext, useContext, useEffect, useState } from "react"
 import { auth } from "./firebase";
@@ -7,7 +9,7 @@ type AuthContextValue = {
     loading: boolean;
 };
 
-const AuthContext = createContext<AuthContextValue | null>(null);
+const AuthContext = createContext<AuthContextValue>(null!);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
