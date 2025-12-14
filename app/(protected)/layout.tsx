@@ -6,7 +6,8 @@ import { useAuth } from "../lib/auth-context";
 
 export default function Protected({ children }: { children: React.ReactNode }) {
     const { user, loading } = useAuth();
-    const returnUrl = usePathname();
+    const pathname = usePathname();
+    const isVerifyRoute = pathname?.startsWith("/user/verify");
     const router = useRouter();
 
     useEffect(() => {
@@ -14,12 +15,12 @@ export default function Protected({ children }: { children: React.ReactNode }) {
             return;
         }
 
-        if (!user) {
-            router.replace(`/user/signin?returnUrl=${encodeURIComponent(returnUrl ?? "/")}`);
+        if (!user && !isVerifyRoute) {
+            router.replace(`/user/signin?returnUrl=${encodeURIComponent(pathname ?? "/")}`);
         }
-    }, [loading, returnUrl, router, user]);
+    }, [isVerifyRoute, loading, pathname, router, user]);
 
-    if (loading || !user) {
+    if (loading || (!user && !isVerifyRoute)) {
         return (
             <div className="flex min-h-[50vh] items-center justify-center text-gray-500 text-sm">
                 Sprawdzanie autoryzacji...
