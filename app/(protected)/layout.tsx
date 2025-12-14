@@ -1,23 +1,31 @@
 'use client';
 
-import React, { useLayoutEffect } from "react";
-import { redirect } from 'next/navigation';
-import { usePathname } from 'next/navigation';
+import React, { useEffect } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "../lib/auth-context";
 
 export default function Protected({ children }: { children: React.ReactNode }) {
-    const { user } = useAuth();
+    const { user, loading } = useAuth();
     const returnUrl = usePathname();
+    const router = useRouter();
 
-    useLayoutEffect(() => {
-        if (!user) {
-            redirect(`/user/signin?returnUrl=${returnUrl}`);
+    useEffect(() => {
+        if (loading) {
+            return;
         }
-    }, []);
 
-    return (
-        <>
-            {children}
-        </>
-    );
+        if (!user) {
+            router.replace(`/user/signin?returnUrl=${encodeURIComponent(returnUrl ?? "/")}`);
+        }
+    }, [loading, returnUrl, router, user]);
+
+    if (loading || !user) {
+        return (
+            <div className="flex min-h-[50vh] items-center justify-center text-gray-500 text-sm">
+                Sprawdzanie autoryzacji...
+            </div>
+        );
+    }
+
+    return <>{children}</>;
 }
