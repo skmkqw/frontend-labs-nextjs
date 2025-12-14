@@ -1,14 +1,22 @@
 "use client";
 
+import { getAuth, setPersistence, browserSessionPersistence, signInWithEmailAndPassword } from "firebase/auth";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 
 type SignInFormValues = {
     email: string;
     password: string;
-    remember: boolean;
 };
 
 export default function SignInPage() {
+    const auth = getAuth();
+    const params = useSearchParams();
+    const router = useRouter();
+    const returnUrl = params.get("returnUrl");
+    const redirectTo = returnUrl && returnUrl.startsWith("/") ? returnUrl : "/";
+
     const {
         register,
         handleSubmit,
@@ -17,12 +25,35 @@ export default function SignInPage() {
         defaultValues: {
             email: "",
             password: "",
-            remember: false,
         },
     });
 
-    const onSubmit = async (formValues: SignInFormValues) => {
-        console.log("Sign in form submitted:", formValues);
+    const onSubmit = (formValues: SignInFormValues) => {
+        const email = formValues.email;
+        const password = formValues.password;
+        setPersistence(auth, browserSessionPersistence)
+            .then(() => {
+                signInWithEmailAndPassword(auth, email, password)
+                    .then(() => {
+                        toast.success("Zalogowano pomyślnie");
+                        router.push(redirectTo);
+                    })
+                    .catch((error: unknown) => {
+                        const message =
+                            error instanceof Error ? error.message : "Wystąpił nieznany błąd logowania.";
+                        toast.error("Nie udało się zalogować", {
+                            description: message,
+                        });
+                    });
+            })
+            .catch((error: unknown) => {
+                const message =
+                    error instanceof Error ? error.message : "Nie udało się ustawić sesji przeglądarkowej.";
+                console.error(error);
+                toast.error("Nie udało się nawiązać sesji", {
+                    description: message,
+                });
+            });
     };
 
     return (
