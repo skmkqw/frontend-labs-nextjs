@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import {
     browserSessionPersistence,
     getAuth,
@@ -17,7 +18,7 @@ type SignInFormValues = {
     password: string;
 };
 
-export default function SignInPage() {
+function SignInForm() {
     const auth = getAuth();
     const params = useSearchParams();
     const router = useRouter();
@@ -131,5 +132,13 @@ export default function SignInPage() {
                 </p>
             </div>
         </section>
+    );
+}
+
+export default function SignInPage() {
+    return (
+        <Suspense fallback={<div className="p-6 text-center text-sm text-gray-500">Ładowanie formularza...</div>}>
+            <SignInForm />
+        </Suspense>
     );
 }
