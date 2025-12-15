@@ -1,4 +1,5 @@
 import { GameState, PremiumSquare, RackTile } from "./scrabble";
+import { getDictionaryWords } from "./dictionary";
 
 export const coordinateKey = (row: number, col: number) => `${row}-${col}`;
 
@@ -36,8 +37,33 @@ export const applyRackAdjustments = (
 };
 
 export const premiumLabels: Record<PremiumSquare, string> = {
-	DL: "Podwójna litera",
-	TL: "Potrójna litera",
-	DW: "Podwójne słowo",
-	TW: "Potrójne słowo",
+  DL: "Podwójna litera",
+  TL: "Potrójna litera",
+  DW: "Podwójne słowo",
+  TW: "Potrójne słowo",
 };
+
+const defaultDictionary = getDictionaryWords();
+
+const canSpellWord = (rack: RackTile[], word: string) => {
+  if (word.length < 2) {
+    return false;
+  }
+  const counts: Record<string, number> = {};
+  rack.forEach((tile) => {
+    const letter = tile.letter.toUpperCase();
+    counts[letter] = (counts[letter] ?? 0) + 1;
+  });
+  for (const char of word.toUpperCase()) {
+    if (!counts[char]) {
+      return false;
+    }
+    counts[char] -= 1;
+  }
+  return true;
+};
+
+export const canRackFormAnyWord = (
+  rack: RackTile[],
+  dictionary: string[] = defaultDictionary,
+) => dictionary.some((word) => canSpellWord(rack, word));

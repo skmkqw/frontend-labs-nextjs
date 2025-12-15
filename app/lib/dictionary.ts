@@ -643,6 +643,8 @@ export const isWordValid = (word: string) => DICTIONARY.has(normalizeWord(word))
 
 export const getDictionarySize = () => DICTIONARY.size;
 
+export const getDictionaryWords = () => Array.from(DICTIONARY);
+
 export const addWordToDictionary = (word: string) => {
   const normalized = normalizeWord(word);
   if (normalized) {

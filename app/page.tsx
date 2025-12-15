@@ -5,7 +5,6 @@ import ScrabbleBoard from "./components/scrabble-board";
 import ActionPanel from "./components/scrabble/action-panel";
 import DictionaryForm from "./components/scrabble/dictionary-form";
 import GameController from "./components/scrabble/game-controller";
-import MessageBanner from "./components/scrabble/message-banner";
 import Rack from "./components/scrabble/rack";
 import ScoreTable from "./components/scrabble/score-table";
 import { useScrabbleGame } from "./hooks/use-scrabble-game";
@@ -16,7 +15,6 @@ export default function Home() {
 	const game = useScrabbleGame();
 
 	useEffect(() => {
-		// eslint-disable-next-line react-hooks/set-state-in-effect
 		setIsHydrated(true);
 	}, []);
 
@@ -98,7 +96,6 @@ export default function Home() {
 						</div>
 					</aside>
 				</section>
-
 			</div>
 		</main>
 	);

@@ -1,27 +1,34 @@
 'use client';
 
-import { DragEvent, useMemo, useState } from "react";
-import { toast } from "sonner";
+import { DragEvent, useEffect, useMemo, useState } from "react";
 import {
 	GameState,
 	PendingPlacement,
 	createInitialGameState,
 	evaluateMove,
+	exchangeRackTiles,
 	getNextPlayerId,
 	refillRack,
-	removeTilesFromRack
+	removeTilesFromRack,
+	returnTilesToBag,
 } from "../lib/scrabble";
 import {
 	applyRackAdjustments,
+	canRackFormAnyWord,
 	coordinateKey,
 	determineWinner,
 } from "../lib/scrabble-game";
+import { getDictionaryWords, isWordValid } from "../lib/dictionary";
+import { toast } from "sonner";
 
 export const useScrabbleGame = () => {
 	const [gameState, setGameState] = useState<GameState>(() => createInitialGameState());
 	const [pendingPlacements, setPendingPlacements] = useState<PendingPlacement[]>([]);
 	const [selectedExchangeTiles, setSelectedExchangeTiles] = useState<string[]>([]);
 	const [customWords, setCustomWords] = useState<string[]>([]);
+	const [autoSwapKey, setAutoSwapKey] = useState<string | null>(null);
+
+	const dictionaryWords = useMemo(() => getDictionaryWords(), []);
 
 	const currentPlayer = useMemo(
 		() => gameState.players.find((player) => player.id === gameState.currentPlayerId),
@@ -109,7 +116,6 @@ export const useScrabbleGame = () => {
 		);
 
 		if (!evaluation.valid) {
-			toast.error(evaluation.error ?? "Ruch jest niepoprawny.");
 			toast.error(evaluation.error ?? "Ruch jest niepoprawny.");
 			return;
 		}
@@ -228,12 +234,135 @@ export const useScrabbleGame = () => {
 		toast.info("Gracz pasuje – kolej przechodzi dalej.");
 	};
 
+	const handleExchangeTiles = () => {
+		if (gameState.isGameOver || !currentPlayer) {
+			return;
+		}
+		if (!selectedExchangeTiles.length) {
+			toast.error("Zaznacz litery, które chcesz wymienić.");
+			return;
+		}
+		if (gameState.bag.length < selectedExchangeTiles.length) {
+			toast.error("W worku jest zbyt mało płytek, aby dokonać wymiany.");
+			return;
+		}
+
+		setGameState((previous) => {
+			const playerIndex = previous.players.findIndex(
+				(player) => player.id === previous.currentPlayerId,
+			);
+			if (playerIndex === -1) {
+				return previous;
+			}
+			const player = previous.players[playerIndex];
+			const { rack, bag: bagAfterExchange } = exchangeRackTiles(
+				player.rack,
+				previous.bag,
+				selectedExchangeTiles,
+			);
+
+			const updatedPlayers = [...previous.players];
+			updatedPlayers[playerIndex] = {
+				...player,
+				rack,
+			};
+
+			return {
+				...previous,
+				players: updatedPlayers,
+				bag: bagAfterExchange,
+				currentPlayerId: getNextPlayerId(previous),
+				turn: previous.turn + 1,
+				consecutivePasses: 0,
+				lastMove: previous.lastMove
+					? { ...previous.lastMove, canBeChallenged: false }
+					: previous.lastMove,
+			};
+		});
+
+		setSelectedExchangeTiles([]);
+		setPendingPlacements([]);
+		toast.info("Wybrane litery zostały wymienione.");
+	};
+
+	const handleChallengeLastMove = () => {
+		if (!gameState.lastMove || !gameState.lastMove.canBeChallenged) {
+			toast.error("Brak ruchu do zakwestionowania.");
+			return;
+		}
+
+		const invalidWords =
+			gameState.lastMove.words.filter((word) => !isWordValid(word)) ?? [];
+
+		if (invalidWords.length === 0) {
+			setGameState((previous) => ({
+				...previous,
+				currentPlayerId: getNextPlayerId(previous),
+				turn: previous.turn + 1,
+				lastMove: previous.lastMove
+					? { ...previous.lastMove, canBeChallenged: false, status: "upheld" }
+					: previous.lastMove,
+			}));
+			toast.info("Słowa są poprawne. Kwestionujący traci kolejkę.");
+			setPendingPlacements([]);
+			return;
+		}
+
+		setGameState((previous) => {
+			if (!previous.lastMove) {
+				return previous;
+			}
+			const targetMoveId = previous.lastMove.moveId;
+			const placements = previous.placements.filter(
+				(placement) => placement.moveId !== targetMoveId,
+			);
+
+			const playerIndex = previous.players.findIndex(
+				(player) => player.id === previous.lastMove?.playerId,
+			);
+			if (playerIndex === -1) {
+				return previous;
+			}
+
+			const player = previous.players[playerIndex];
+			const drawnTileIds = previous.lastMove.drawnTiles.map((tile) => tile.id);
+			const rackWithoutDrawn = player.rack.filter(
+				(tile) => !drawnTileIds.includes(tile.id),
+			);
+			const bagWithReturns = returnTilesToBag(previous.bag, previous.lastMove.drawnTiles);
+			const restoredRack = [...rackWithoutDrawn, ...previous.lastMove.playedTiles];
+
+			const updatedPlayers = [...previous.players];
+			updatedPlayers[playerIndex] = {
+				...player,
+				rack: restoredRack,
+				score: Math.max(0, player.score - previous.lastMove.score),
+			};
+
+			return {
+				...previous,
+				players: updatedPlayers,
+				placements,
+				bag: bagWithReturns,
+				turn: Math.max(1, previous.turn - 1),
+				lastMove: null,
+			};
+		});
+
+		toast.info(
+			`Kwestionowanie przyjęte. Usunięto słowa: ${invalidWords.join(", ")}.`,
+		);
+		setPendingPlacements([]);
+	};
+
 	const handleResetGame = () => {
 		setGameState(createInitialGameState());
 		setPendingPlacements([]);
 		setSelectedExchangeTiles([]);
 		setCustomWords([]);
 		toast.info("Rozpoczęto nową partię.");
+		toast.error(null);
+		setAutoSwapKey(null);
 	};
 
 	const toggleExchangeSelection = (tileId: string) => {
@@ -255,6 +384,65 @@ export const useScrabbleGame = () => {
 		);
 	};
 
+	/* eslint-disable react-hooks/set-state-in-effect */
+	useEffect(() => {
+		if (!currentPlayer || !currentPlayer.rack.length) {
+			return;
+		}
+		const key = `${currentPlayer.id}-${gameState.turn}`;
+		if (autoSwapKey === key) {
+			return;
+		}
+
+		const canFormWord = canRackFormAnyWord(currentPlayer.rack, dictionaryWords);
+		if (canFormWord) {
+			return;
+		}
+
+		if (!gameState.bag.length) {
+			toast.info("Brak możliwych słów i worek jest pusty.");
+			setAutoSwapKey(key);
+			return;
+		}
+
+		setGameState((previous) => {
+			const playerIndex = previous.players.findIndex(
+				(player) => player.id === previous.currentPlayerId,
+			);
+			if (playerIndex === -1) {
+				return previous;
+			}
+			const player = previous.players[playerIndex];
+			const tileIds = player.rack.map((tile) => tile.id);
+			const { rack, bag: bagAfterExchange } = exchangeRackTiles(
+				player.rack,
+				previous.bag,
+				tileIds,
+			);
+
+			const updatedPlayers = [...previous.players];
+			updatedPlayers[playerIndex] = {
+				...player,
+				rack,
+			};
+
+			return {
+				...previous,
+				players: updatedPlayers,
+				bag: bagAfterExchange,
+			};
+		});
+
+		toast.info("Brak możliwych słów – przydzielono nowy zestaw liter.");
+		setAutoSwapKey(key);
+	}, [
+		currentPlayer,
+		gameState.turn,
+		gameState.bag.length,
+		dictionaryWords,
+		autoSwapKey,
+	]);
+
 	return {
 		gameState,
 		currentPlayer,
@@ -267,6 +455,8 @@ export const useScrabbleGame = () => {
 		handleClearPending,
 		handleCommitMove,
 		handlePassTurn,
+		handleExchangeTiles,
+		handleChallengeLastMove,
 		handleResetGame,
 		toggleExchangeSelection,
 		handleTileDragStart,
