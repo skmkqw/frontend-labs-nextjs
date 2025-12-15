@@ -1,5 +1,7 @@
 # Frontend Labs
 
+Link do wersji live: https://frontend-labs-nextjs-chi.vercel.app/
+
 ## Funkcje
 
 - Rejestracja, logowanie i weryfikacja konta z informacjami o sesji w pasku nawigacyjnym.
