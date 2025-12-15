@@ -109,11 +109,13 @@ export default function Navbar({ children }: { children: ReactNode }) {
 
     const toggleSidebar = () => setSidebarOpen((prev) => !prev);
     const closeSidebar = () => setSidebarOpen(false);
+
     const authLabel = useMemo(() => {
         if (loading) return "Sprawdzanie sesji...";
         if (user?.email) return `Zalogowany jako ${user.email}`;
         return "Nie jesteś zalogowany";
     }, [loading, user]);
+
     const avatarPlaceholder = useMemo(() => {
         const source = user?.displayName || user?.email || "Użytkownik";
         return source.charAt(0).toUpperCase();

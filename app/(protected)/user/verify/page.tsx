@@ -8,18 +8,11 @@ import Button from "@/app/components/button";
 
 export default function VerifyEmail() {
     const { user } = useAuth();
-    const [storedEmail, setStoredEmail] = useState<string | null>(null);
     const [isSigningOut, setIsSigningOut] = useState(false);
     const displayedEmail = useMemo(
-        () => storedEmail ?? user?.email ?? "twoim adresie e-mail",
-        [storedEmail, user],
+        () => user?.email ?? "twoim adresie e-mail",
+        [user],
     );
-
-    useEffect(() => {
-        if (user?.email) {
-            setStoredEmail(user.email);
-        }
-    }, [user]);
 
     useEffect(() => {
         if (!user || isSigningOut) {
@@ -31,9 +24,7 @@ export default function VerifyEmail() {
         }
         setIsSigningOut(true);
         signOut(auth).catch((error) => {
-            toast.error("Wylogowanie po rejestracji nie powiodło się", {
-                description: error instanceof Error ? error.message : String(error),
-            });
+            toast.error("Wylogowanie po rejestracji nie powiodło się");
             setIsSigningOut(false);
         });
     }, [isSigningOut, user]);

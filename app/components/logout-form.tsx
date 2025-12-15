@@ -18,9 +18,7 @@ export default function LogoutForm() {
             toast.success("Zostałeś wylogowany.");
             router.push("/user/signin");
         } catch (error: unknown) {
-            const description =
-                error instanceof Error ? error.message : "Wystąpił błąd podczas wylogowania.";
-            toast.error("Nie udało się wylogować", { description });
+            toast.error("Nie udało się wylogować");
         } finally {
             setSubmitting(false);
         }
