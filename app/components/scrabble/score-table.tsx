@@ -5,7 +5,7 @@ export default function ScoreTable({ gameState }: { gameState: GameState }) {
     return (
         <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
             <h2 className="text-lg font-semibold">Tabela wyników</h2>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 {gameState.players.map((player) => (
                     <div
                         key={player.id}

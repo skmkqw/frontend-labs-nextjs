@@ -24,7 +24,7 @@ export default function Rack({
 	onToggleSelection,
 }: RackProps) {
 	return (
-		<div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+    <div className="rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm">
 			<h3 className="text-lg font-semibold">Stojak {ownerName}</h3>
 			<p className="text-sm text-zinc-500">
 				Kliknij literę, aby zaznaczyć do wymiany. Przeciągnij, aby ułożyć słowo.

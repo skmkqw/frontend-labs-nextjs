@@ -20,7 +20,7 @@ type ActionPanelProps = {
 };
 
 export default function ActionPanel({
-	currentPlayerName,
+  currentPlayerName,
 	pendingPlacements,
 	isGameOver,
 	onCommitMove,
@@ -28,15 +28,15 @@ export default function ActionPanel({
 	onPassTurn,
 	onRemovePending,
 }: ActionPanelProps) {
-	const hasPending = Boolean(pendingPlacements.length);
+  const hasPending = Boolean(pendingPlacements.length);
 
-	return (
-		<div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+  return (
+    <div className="rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm">
 			<h3 className="text-lg font-semibold">Panel ruchu</h3>
 			<p className="text-sm text-zinc-500">
 				Kolej należy do: <strong>{currentPlayerName ?? "—"}</strong>
 			</p>
-			<div className="mt-4 space-y-3">
+      <div className="mt-3 space-y-2.5">
 				<Button
 					variant="lg"
 					className="w-full"

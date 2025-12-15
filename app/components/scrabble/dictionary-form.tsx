@@ -23,7 +23,7 @@ export default function DictionaryForm({ customWords, onAddWord }: DictionaryFor
   };
 
   return (
-    <div className="h-full rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+    <div className="h-full rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm">
       <h3 className="text-lg font-semibold">Słownik domowy</h3>
       <p className="text-sm text-zinc-500">
         Dodaj własne słowo, aby zaakceptować je w bieżącej partii.
