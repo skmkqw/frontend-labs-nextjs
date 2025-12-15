@@ -1,34 +1,73 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
 import { updateProfile } from "firebase/auth";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import { toast } from "sonner";
 import Button from "@/app/components/button";
 import { useAuth } from "@/app/lib/auth-context";
+import { db } from "@/app/lib/firebase";
 
 type ProfileFormValues = {
     displayName: string;
     email: string;
     photoURL: string;
+    street: string;
+    city: string;
+    zipCode: string;
 };
 
 export default function ProfilePage() {
     const { user } = useAuth();
-    const [formValues, setFormValues] = useState<ProfileFormValues>({
-        displayName: user?.displayName ?? "",
-        email: user?.email ?? "",
-        photoURL: user?.photoURL ?? "",
-    });
     const [isSubmitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [isAddressLoading, setAddressLoading] = useState(true);
 
-    useEffect(() => {
-        setFormValues({
+    const {
+        register,
+        handleSubmit,
+        setValue,
+        watch,
+    } = useForm<ProfileFormValues>({
+        defaultValues: {
             displayName: user?.displayName ?? "",
             email: user?.email ?? "",
             photoURL: user?.photoURL ?? "",
-        });
-    }, [user]);
+            street: "",
+            city: "",
+            zipCode: "",
+        },
+    });
+
+    useEffect(() => {
+        setValue("displayName", user?.displayName ?? "");
+        setValue("email", user?.email ?? "");
+        setValue("photoURL", user?.photoURL ?? "");
+    }, [setValue, user]);
+
+    useEffect(() => {
+        const fetchAddress = async () => {
+            if (!user) {
+                setAddressLoading(false);
+                return;
+            }
+            try {
+                const snapshot = await getDoc(doc(db, "users", user.uid));
+                const address = snapshot.data()?.address;
+                if (address) {
+                    setValue("street", address.street ?? "");
+                    setValue("city", address.city ?? "");
+                    setValue("zipCode", address.zipCode ?? "");
+                }
+            } catch (fetchError) {
+                console.error("Nie udało się pobrać adresu:", fetchError);
+            } finally {
+                setAddressLoading(false);
+            }
+        };
+        fetchAddress();
+    }, [setValue, user]);
 
     if (!user) {
         return (
@@ -38,34 +77,44 @@ export default function ProfilePage() {
         );
     }
 
+    const watchedValues = watch();
     const avatarSrc = useMemo(
-        () => formValues.photoURL || user.photoURL || "",
-        [formValues.photoURL, user.photoURL],
+        () => watchedValues.photoURL || user.photoURL || "",
+        [watchedValues.photoURL, user.photoURL],
     );
 
-    const handleChange = (field: keyof ProfileFormValues) => (event: React.ChangeEvent<HTMLInputElement>) => {
-        setFormValues((prev) => ({
-            ...prev,
-            [field]: event.target.value,
-        }));
-    };
-
-    const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
+    const onSubmit = async (formValues: ProfileFormValues) => {
         setSubmitting(true);
         setError(null);
 
-        updateProfile(user, {
-            displayName: formValues.displayName,
-            photoURL: formValues.photoURL,
-        })
-            .then(() => {
-                toast.success("Profile updated");
-            })
-            .catch((updateError) => {
-                setError(updateError.message);
-            })
-            .finally(() => setSubmitting(false));
+        try {
+            await updateProfile(user, {
+                displayName: formValues.displayName,
+                photoURL: formValues.photoURL,
+            });
+
+            await setDoc(
+                doc(db, "users", user.uid),
+                {
+                    address: {
+                        street: formValues.street,
+                        city: formValues.city,
+                        zipCode: formValues.zipCode,
+                    },
+                },
+                { merge: true },
+            );
+
+            toast.success("Profil został zaktualizowany.");
+        } catch (updateError: unknown) {
+            const message =
+                updateError instanceof Error
+                    ? updateError.message
+                    : "Brak uprawnień do zapisania danych profilu.";
+            setError(message);
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     return (
@@ -79,36 +128,50 @@ export default function ProfilePage() {
                     {avatarSrc ? (
                         <img
                             src={avatarSrc}
-                            alt={formValues.displayName || user.email || "Avatar"}
+                            alt={watchedValues.displayName || watchedValues.email || "Avatar"}
                             className="h-32 w-32 rounded-full object-cover shadow"
                         />
                     ) : (
                         <div className="flex h-32 w-32 items-center justify-center rounded-full bg-indigo-100 text-3xl font-semibold text-indigo-700">
-                            {(formValues.displayName || user.email || "Użytkownik").charAt(0).toUpperCase()}
+                            {(watchedValues.displayName || watchedValues.email || "Użytkownik")
+                                .charAt(0)
+                                .toUpperCase()}
                         </div>
                     )}
                     <div className="mt-4">
                         <p className="text-lg font-semibold text-gray-900">
-                            {formValues.displayName || "Brak nazwy"}
+                            {watchedValues.displayName || "Brak nazwy"}
                         </p>
-                        <p className="text-sm text-gray-500">{user.email}</p>
+                        <p className="text-sm text-gray-500">{watchedValues.email}</p>
                     </div>
                 </div>
                 <div className="flex-1 space-y-3 text-sm">
                     <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
                         <p className="text-xs uppercase text-gray-400">Nazwa wyświetlana</p>
                         <p className="text-base font-medium text-gray-900">
-                            {formValues.displayName || "Nie ustawiono"}
+                            {watchedValues.displayName || "Nie ustawiono"}
                         </p>
                     </div>
                     <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
                         <p className="text-xs uppercase text-gray-400">Adres e-mail</p>
-                        <p className="text-base font-medium text-gray-900 break-all">{user.email}</p>
+                        <p className="text-base font-medium text-gray-900 break-all">{watchedValues.email}</p>
                     </div>
                     <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
                         <p className="text-xs uppercase text-gray-400">Zdjęcie profilowe</p>
                         <p className="text-base font-medium text-gray-900 break-all">
-                            {formValues.photoURL || "Brak adresu zdjęcia"}
+                            {watchedValues.photoURL || "Brak adresu zdjęcia"}
+                        </p>
+                    </div>
+                    <div className="rounded-lg border border-gray-100 bg-gray-50 p-4">
+                        <p className="text-xs uppercase text-gray-400">Adres do korespondencji</p>
+                        <p className="text-base font-medium text-gray-900">
+                            {watchedValues.street ? `${watchedValues.street}` : "Brak ulicy"}
+                        </p>
+                        <p className="text-base font-medium text-gray-900">
+                            {watchedValues.city || "Brak miasta"}
+                        </p>
+                        <p className="text-base font-medium text-gray-900">
+                            {watchedValues.zipCode || "Brak kodu pocztowego"}
                         </p>
                     </div>
                 </div>
@@ -118,7 +181,7 @@ export default function ProfilePage() {
                     {error}
                 </div>
             )}
-            <form className="space-y-5" onSubmit={onSubmit}>
+            <form className="space-y-5" onSubmit={handleSubmit(onSubmit)}>
                 <div>
                     <label className="text-sm font-medium text-gray-700" htmlFor="profile-display-name">
                         Nazwa wyświetlana
@@ -126,9 +189,9 @@ export default function ProfilePage() {
                     <input
                         id="profile-display-name"
                         type="text"
-                        value={formValues.displayName}
-                        onChange={handleChange("displayName")}
-                        className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                        disabled={isAddressLoading}
+                        {...register("displayName")}
+                        className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 disabled:opacity-70"
                     />
                 </div>
                 <div>
@@ -138,8 +201,8 @@ export default function ProfilePage() {
                     <input
                         id="profile-email"
                         type="email"
-                        value={formValues.email}
                         disabled
+                        {...register("email")}
                         className="mt-1 w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-sm text-gray-500"
                     />
                 </div>
@@ -150,12 +213,50 @@ export default function ProfilePage() {
                     <input
                         id="profile-photo"
                         type="url"
-                        value={formValues.photoURL}
-                        onChange={handleChange("photoURL")}
-                        className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                        disabled={isAddressLoading}
+                        {...register("photoURL")}
+                        className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 disabled:opacity-70"
                     />
                 </div>
-                <Button type="submit" disabled={isSubmitting}>
+                <div className="grid gap-4 md:grid-cols-3">
+                    <div className="md:col-span-3">
+                        <label className="text-sm font-medium text-gray-700" htmlFor="profile-street">
+                            Ulica i numer
+                        </label>
+                        <input
+                            id="profile-street"
+                            type="text"
+                            disabled={isAddressLoading}
+                            {...register("street")}
+                            className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 disabled:opacity-70"
+                        />
+                    </div>
+                    <div>
+                        <label className="text-sm font-medium text-gray-700" htmlFor="profile-city">
+                            Miasto
+                        </label>
+                        <input
+                            id="profile-city"
+                            type="text"
+                            disabled={isAddressLoading}
+                            {...register("city")}
+                            className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 disabled:opacity-70"
+                        />
+                    </div>
+                    <div>
+                        <label className="text-sm font-medium text-gray-700" htmlFor="profile-zip">
+                            Kod pocztowy
+                        </label>
+                        <input
+                            id="profile-zip"
+                            type="text"
+                            disabled={isAddressLoading}
+                            {...register("zipCode")}
+                            className="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 disabled:opacity-70"
+                        />
+                    </div>
+                </div>
+                <Button type="submit" disabled={isSubmitting || isAddressLoading}>
                     {isSubmitting ? "Zapisywanie..." : "Zapisz zmiany"}
                 </Button>
             </form>

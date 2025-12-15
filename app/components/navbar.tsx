@@ -54,6 +54,30 @@ const navItems = [
         ),
     },
     {
+        label: "Artykuły",
+        href: "/user/articles",
+        icon: (
+            <svg
+                className="h-5 w-5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                viewBox="0 0 24 24"
+            >
+                <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M19.5 14.25v-9a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 5.25v13.5A2.25 2.25 0 006.75 21h8.689c.597 0 1.171-.237 1.593-.659l3.998-3.998a2.25 2.25 0 00.659-1.593z"
+                />
+                <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M8.25 7.5h7.5M8.25 12h7.5M8.25 16.5h3.75"
+                />
+            </svg>
+        ),
+    },
+    {
         label: "Ustawienia",
         href: "/settings",
         icon: (
