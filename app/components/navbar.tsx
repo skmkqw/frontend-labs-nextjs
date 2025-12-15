@@ -90,6 +90,10 @@ export default function Navbar({ children }: { children: ReactNode }) {
         if (user?.email) return `Zalogowany jako ${user.email}`;
         return "Nie jesteś zalogowany";
     }, [loading, user]);
+    const avatarPlaceholder = useMemo(() => {
+        const source = user?.displayName || user?.email || "Użytkownik";
+        return source.charAt(0).toUpperCase();
+    }, [user]);
 
     return (
         <div className="min-h-screen bg-gray-50 text-gray-900 flex">
@@ -141,11 +145,24 @@ export default function Navbar({ children }: { children: ReactNode }) {
                             <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
                         </svg>
                     </button>
-                    <div className="flex flex-col">
-                        <p className="text-xs uppercase tracking-wide text-gray-400">Stan konta</p>
-                        <p className="text-sm font-medium text-gray-800">
-                            {authLabel}
-                        </p>
+                    <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-full bg-gray-100 text-sm font-semibold text-gray-600 flex items-center justify-center overflow-hidden">
+                            {user?.photoURL ? (
+                                <img
+                                    src={user.photoURL}
+                                    alt={user.displayName || user.email || "Profil"}
+                                    className="h-full w-full object-cover"
+                                />
+                            ) : (
+                                avatarPlaceholder
+                            )}
+                        </div>
+                        <div className="flex flex-col">
+                            <p className="text-xs uppercase tracking-wide text-gray-400">Stan konta</p>
+                            <p className="text-sm font-medium text-gray-800">
+                                {authLabel}
+                            </p>
+                        </div>
                     </div>
                     {user ? (
                         <div className="flex items-center gap-2">
