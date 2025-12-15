@@ -35,20 +35,16 @@ export default function RegisterForm() {
 
     const auth = getAuth();
 
-    const onSubmit = (formValues: RegisterFormValues) => {
-        createUserWithEmailAndPassword(auth, formValues.email, formValues.password)
-            .then((userCredential) => {
-                console.log("User registered!");
-                sendEmailVerification(auth.currentUser!)
-                    .then(() => {
-                        toast.success("Email verification send!");
-                        redirect("/user/verify");
-                    });
-
-            })
-            .catch((error) => {
-                toast.error(error.message);
-            });
+    const onSubmit = async (formValues: RegisterFormValues) => {
+        try {
+            const credential = await createUserWithEmailAndPassword(auth, formValues.email, formValues.password);
+            await sendEmailVerification(credential.user);
+            toast.success("Wysłaliśmy do Ciebie link potwierdzający adres e-mail.");
+            redirect("/user/verify");
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : "Nie udało się utworzyć konta.";
+            toast.error(message);
+        }
     };
 
     return (

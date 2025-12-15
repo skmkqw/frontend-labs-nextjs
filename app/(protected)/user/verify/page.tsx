@@ -2,15 +2,18 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { getAuth, signOut } from "firebase/auth";
+import { toast } from "sonner";
 import { useAuth } from "@/app/lib/auth-context";
 import Button from "@/app/components/button";
-import { toast } from "sonner";
 
 export default function VerifyEmail() {
     const { user } = useAuth();
     const [storedEmail, setStoredEmail] = useState<string | null>(null);
     const [isSigningOut, setIsSigningOut] = useState(false);
-    const displayedEmail = useMemo(() => storedEmail ?? user?.email ?? "twoim adresie e-mail", [storedEmail, user]);
+    const displayedEmail = useMemo(
+        () => storedEmail ?? user?.email ?? "twoim adresie e-mail",
+        [storedEmail, user],
+    );
 
     useEffect(() => {
         if (user?.email) {
@@ -28,7 +31,9 @@ export default function VerifyEmail() {
         }
         setIsSigningOut(true);
         signOut(auth).catch((error) => {
-            toast.error("Wylogowanie po rejestracji nie powiodło się:", error);
+            toast.error("Wylogowanie po rejestracji nie powiodło się", {
+                description: error instanceof Error ? error.message : String(error),
+            });
             setIsSigningOut(false);
         });
     }, [isSigningOut, user]);

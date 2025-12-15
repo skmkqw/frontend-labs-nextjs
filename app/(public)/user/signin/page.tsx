@@ -1,6 +1,13 @@
 "use client";
 
-import { getAuth, setPersistence, browserSessionPersistence, signInWithEmailAndPassword } from "firebase/auth";
+import {
+    browserSessionPersistence,
+    getAuth,
+    sendEmailVerification,
+    setPersistence,
+    signInWithEmailAndPassword,
+    signOut,
+} from "firebase/auth";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -28,32 +35,38 @@ export default function SignInPage() {
         },
     });
 
-    const onSubmit = (formValues: SignInFormValues) => {
-        const email = formValues.email;
-        const password = formValues.password;
-        setPersistence(auth, browserSessionPersistence)
-            .then(() => {
-                signInWithEmailAndPassword(auth, email, password)
-                    .then(() => {
-                        toast.success("Zalogowano pomyślnie");
-                        router.push(redirectTo);
-                    })
-                    .catch((error: unknown) => {
-                        const message =
-                            error instanceof Error ? error.message : "Wystąpił nieznany błąd logowania.";
-                        toast.error("Nie udało się zalogować", {
-                            description: message,
-                        });
+    const onSubmit = async (formValues: SignInFormValues) => {
+        try {
+            await setPersistence(auth, browserSessionPersistence);
+            const userCredential = await signInWithEmailAndPassword(auth, formValues.email, formValues.password);
+
+            if (!userCredential.user.emailVerified) {
+                try {
+                    await sendEmailVerification(userCredential.user);
+                    toast.info("Adres e-mail wymaga potwierdzenia", {
+                        description: "Wysłaliśmy ponownie wiadomość weryfikacyjną.",
                     });
-            })
-            .catch((error: unknown) => {
-                const message =
-                    error instanceof Error ? error.message : "Nie udało się ustawić sesji przeglądarkowej.";
-                console.error(error);
-                toast.error("Nie udało się nawiązać sesji", {
-                    description: message,
-                });
+                } catch (resendError: unknown) {
+                    const message =
+                        resendError instanceof Error
+                            ? resendError.message
+                            : "Nie udało się wysłać ponownie wiadomości weryfikacyjnej.";
+                    toast.error(message);
+                }
+                await signOut(auth);
+                router.replace("/user/verify");
+                return;
+            }
+
+            toast.success("Zalogowano pomyślnie");
+            router.push(redirectTo);
+        } catch (error: unknown) {
+            const message =
+                error instanceof Error ? error.message : "Nie udało się przetworzyć logowania.";
+            toast.error("Nie udało się zalogować", {
+                description: message,
             });
+        }
     };
 
     return (
